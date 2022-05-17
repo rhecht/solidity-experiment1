@@ -39,15 +39,20 @@ abi=compiled_sol["contracts"]["SimpleStorage.sol"]["SimpleStorage"]["abi"]
 
 # for connecting to ganache
 # test variables from ganache
-w3 = Web3(Web3.HTTPProvider("HTTP://127.0.0.1:7545"))
-chain_id = 1337
-my_address = "0xeCBeE0F2d255DceB13Ed9453c778fdA748a9cC3c"
+#w3 = Web3(Web3.HTTPProvider("HTTP://127.0.0.1:8545"))
+w3 = Web3(Web3.HTTPProvider("https://rinkeby.infura.io/v3/48f91ad494244b1892fe3f768c5cf4af"))
+
+# get chain_id from chainid.network
+#chain_id = 1337
+chain_id = 4 #rinkeby
+
+my_address = os.getenv("PUBLIC_KEY")
 print(os.getenv("SOME_OTHER_VAR"))
 
-#private_key = "0x0d5ee08da44e694f32127b3510368530ba8f84535067bb5d6f9b58f7e0c3b918"
+#private_key = "0xbf1c2259d231d6f21f7b9be81b57c54cc37f415796d58f13e5a26f6f26ec6cf0"
 
 #Set up private key in Terminal Fas an environment variable as follows:
-# export PRIVATE_KEY=0x0d5ee08da44e694f32127b3510368530ba8f84535067bb5d6f9b58f7e0c3b918
+# export PRIVATE_KEY=0xbf1c2259d231d6f21f7b9be81b57c54cc37f415796d58f13e5a26f6f26ec6cf0
 # echo $PRIVATE_KEY
 # problem is that the environment variable will be gone once shell is closed.
 # apparently there's a more effective way when moving to Brownie for private key management
@@ -57,10 +62,11 @@ private_key=os.getenv("PRIVATE_KEY")
 print(private_key)
 
 # Create the contract in python
-SimpleStorage = w3.eth.contract(abi==abi, bytecode=bytecode)
+SimpleStorage = w3.eth.contract(abi=abi, bytecode=bytecode)
 #print(SimpleStorage )
 
 nonce = w3.eth.getTransactionCount(my_address)
+
 #print(nonce)
 
 # 1. build a transaction
@@ -74,18 +80,35 @@ transaction = SimpleStorage.constructor().buildTransaction(
 signed_txn = w3.eth.account.sign_transaction(transaction, private_key=private_key)
 
 #send this signed transaction
+print("Deploying contract...")
 tx_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
 tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+print("Deployed!")
 
 # working with the contract, you always need
 # contract address
 
 # contract ABI
 simple_storage = w3.eth.contract(address=tx_receipt.contractAddress, abi=abi)
-print(simple_storage.functions.retrieve())
+# Call -> Simulate making the call and getting a return value
+# Transact -> Actually making a state change
+
+#initial value of favorite number
+print(simple_storage.functions.retrieve().call())
+print("Updating Contract...")
+
+store_transaction = SimpleStorage.constructor().buildTransaction(
+    {"chainId": chain_id, "from": my_address, "nonce": nonce + 1}
+)
+signed_store_txn = w3.eth.account.sign_transaction(store_transaction, private_key=private_key)
+send_store_tx = w3.eth.send_raw_transaction(signed_store_txn.rawTransaction)
+tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+print("Updated!")
+print(simple_storage.functions.retrieve().call())
+#print(simple_storage.functions.store(15).call())
 
 
 #print(abi)
 # print(compiled_sol)
 
-#  4:11:05 https://www.youtube.com/watch?v=M576WGiDBdQ&ab_channel=freeCodeCamp.org
+#  4:27:56 https://www.youtube.com/watch?v=M576WGiDBdQ&ab_channel=freeCodeCamp.org
